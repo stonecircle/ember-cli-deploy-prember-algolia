@@ -26,30 +26,30 @@ module.exports = {
 
       requiredConfig: Object.freeze(['indexName', 'applicationId', 'apiKey']),
 
-      collect(indexes) {
-        if(typeof this.indexesSoFar === 'undefined') {
-          this.indexesSoFar = [];
+      collect(objects) {
+        if(typeof this.objectsSoFar === 'undefined') {
+          this.objectsSoFar = [];
         }
 
-        this.indexesSoFar.push(...indexes);
+        this.objectsSoFar.push(...objects);
 
-        if (this.indexesSoFar.length >= this.readConfig('batchSize')) {
+        if (this.objectsSoFar.length >= this.readConfig('batchSize')) {
           return this.pushAndClear();
         }
       },
 
       pushAndClear() {
-        this.log(`Pushing ${this.indexesSoFar.length} indexes to Algolia`);
+        this.log(`Pushing ${this.objectsSoFar.length} objects to Algolia`);
 
         return new Promise((resolve, reject) => {
-          this.index.addObjects(this.indexesSoFar, (err) => {
+          this.index.addObjects(this.objectsSoFar, (err) => {
             if(err) {
               this.log('Error uploading the index', { color: 'red' });
               this.log(err, { color: 'red' })
               return reject(err);
             }
-            delete this.indexesSoFar;
-            this.indexesSoFar = [];
+            delete this.objectsSoFar;
+            this.objectsSoFar = [];
             resolve();
           });
         });
@@ -82,32 +82,32 @@ module.exports = {
           const Extractor = new HtmlExtractor();
 
           const content = readFileSync(join(context.distDir, file), 'utf8');
-          const records = Extractor.run(content, {
+          const objects = Extractor.run(content, {
             tagsToExclude: this.readConfig('tagsToExclude'),
             cssSelector: this.readConfig('cssSelector'),
             headingSelector: this.readConfig('headingSelector'),
           });
 
           if (version) {
-            records.forEach((record) => {
-              record.version = version
-              record.objectID = `${version}-${record.objectID}`;
+            objects.forEach((object) => {
+              object.version = version
+              object.objectID = `${version}-${object.objectID}`;
             })
           }
 
-          records.forEach(record => {
+          objects.forEach(object => {
             if (this.readConfig('pathPattern')) {
               let match = file.match(this.readConfig('pathPattern'));
 
               if(match) {
-                record.path = match[1];
+                object.path = match[1];
               }
             } else {
-              record.path = file
+              object.path = file
             }
           })
 
-          await this.collect(records);
+          await this.collect(objects);
         }
 
         await this.pushAndClear();
